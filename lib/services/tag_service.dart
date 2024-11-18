@@ -6,6 +6,9 @@ import 'base/isar_service.dart';
 class TagService {
   final isar = IsarService.instance.isar;
 
+  // 移除构造函数参数
+  TagService();
+
   // 保存标签
   Future<void> saveTag(Tag tag) async {
     await isar.writeTxn(() async {

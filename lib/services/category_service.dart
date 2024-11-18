@@ -6,6 +6,9 @@ import 'base/isar_service.dart';
 class CategoryService {
   final isar = IsarService.instance.isar;
 
+  // 移除构造函数参数
+  CategoryService();
+
   // 保存分类
   Future<void> saveCategory(Category category) async {
     await isar.writeTxn(() async {
