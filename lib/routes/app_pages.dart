@@ -12,14 +12,17 @@ import '../views/stats/stats_binding.dart';
 
 part 'app_routes.dart';
 
+/// 应用路由配置
 class AppPages {
+  // 初始路由
   static const INITIAL = Routes.HOME;
 
+  // 路由列表
   static final routes = [
     GetPage(
       name: Routes.HOME,
       page: () => const HomeView(),
-      binding: HomeBinding(),
+      binding: HomeBinding(), // 依赖注入绑定
     ),
     GetPage(
       name: Routes.NOTES,

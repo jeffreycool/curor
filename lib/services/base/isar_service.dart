@@ -5,23 +5,25 @@ import '../../models/category.dart';
 import '../../models/tag.dart';
 import '../encryption_service.dart';
 
+/// Isar 数据库服务基类，提供数据库的基础功能
 class IsarService {
   static late final IsarService instance;
   late final Isar isar;
 
+  /// 初始化数据库
   static Future<void> initialize() async {
     final dir = await getApplicationDocumentsDirectory();
 
     // 初始化加密服务
     await EncryptionService.initialize('your_secret_key_here');
 
-    // 配置 Isar 实例
+    // 配置并打开 Isar 实例
     final isar = await Isar.open(
       [NoteSchema, CategorySchema, TagSchema],
       directory: dir.path,
       name: 'encrypted_db',
-      maxSizeMiB: 512,
-      inspector: false,
+      maxSizeMiB: 512, // 设置数据库最大大小
+      inspector: false, // 禁用检查器以提高性能
     );
 
     instance = IsarService._(isar);
