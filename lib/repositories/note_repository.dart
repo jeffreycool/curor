@@ -3,50 +3,34 @@ import '../core/base/base_repository.dart';
 import '../models/note.dart';
 
 class NoteRepository extends BaseRepository {
-  static final NoteRepository _instance = NoteRepository._internal();
-  factory NoteRepository() => _instance;
-  NoteRepository._internal();
-
   // 获取所有笔记
   Stream<List<Note>> getAllNotes() {
-    return isar.notes
-        .where()
-        .sortByCreatedAtDesc()
-        .watch(fireImmediately: true);
+    return isar.notes.where().watch(fireImmediately: true);
   }
 
-  // 保存笔记
-  Future<void> saveNote(Note note) async {
+  // 添加笔记
+  Future<void> addNote(Note note) async {
     await isar.writeTxn(() async {
       await isar.notes.put(note);
-      await note.category.save();
-      await note.tags.save();
     });
-    clearCache();
   }
 
   // 删除笔记
-  Future<void> deleteNote(Id id) async {
+  Future<void> deleteNote(int id) async {
     await isar.writeTxn(() async {
       await isar.notes.delete(id);
     });
-    clearCache();
   }
 
-  // 搜索笔记
-  Stream<List<Note>> searchNotes(String query) {
-    if (query.isEmpty) return getAllNotes();
+  // 更新笔记
+  Future<void> updateNote(Note note) async {
+    await isar.writeTxn(() async {
+      await isar.notes.put(note);
+    });
+  }
 
-    return isar.notes
-        .filter()
-        .optional(
-          query.isNotEmpty,
-          (q) => q
-              .titleContains(query, caseSensitive: false)
-              .or()
-              .contentContains(query, caseSensitive: false),
-        )
-        .sortByCreatedAtDesc()
-        .watch(fireImmediately: true);
+  // 根据ID获取笔记
+  Future<Note?> getNoteById(int id) async {
+    return await isar.notes.get(id);
   }
 }

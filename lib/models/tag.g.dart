@@ -17,8 +17,13 @@ const TagSchema = CollectionSchema(
   name: r'Tag',
   id: 4007045862261149568,
   properties: {
-    r'name': PropertySchema(
+    r'createdAt': PropertySchema(
       id: 0,
+      name: r'createdAt',
+      type: IsarType.dateTime,
+    ),
+    r'name': PropertySchema(
+      id: 1,
       name: r'name',
       type: IsarType.string,
     )
@@ -29,16 +34,16 @@ const TagSchema = CollectionSchema(
   deserializeProp: _tagDeserializeProp,
   idName: r'id',
   indexes: {
-    r'name': IndexSchema(
-      id: 879695947855722453,
-      name: r'name',
-      unique: true,
+    r'createdAt': IndexSchema(
+      id: -3433535483987302584,
+      name: r'createdAt',
+      unique: false,
       replace: false,
       properties: [
         IndexPropertySchema(
-          name: r'name',
-          type: IndexType.hash,
-          caseSensitive: true,
+          name: r'createdAt',
+          type: IndexType.value,
+          caseSensitive: false,
         )
       ],
     )
@@ -65,7 +70,12 @@ int _tagEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
-  bytesCount += 3 + object.name.length * 3;
+  {
+    final value = object.name;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   return bytesCount;
 }
 
@@ -75,7 +85,8 @@ void _tagSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.name);
+  writer.writeDateTime(offsets[0], object.createdAt);
+  writer.writeString(offsets[1], object.name);
 }
 
 Tag _tagDeserialize(
@@ -84,9 +95,11 @@ Tag _tagDeserialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  final object = Tag();
+  final object = Tag(
+    createdAt: reader.readDateTimeOrNull(offsets[0]),
+    name: reader.readStringOrNull(offsets[1]),
+  );
   object.id = id;
-  object.name = reader.readString(offsets[0]);
   return object;
 }
 
@@ -98,7 +111,9 @@ P _tagDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 1:
+      return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -117,64 +132,18 @@ void _tagAttach(IsarCollection<dynamic> col, Id id, Tag object) {
   object.notes.attach(col, col.isar.collection<Note>(), r'notes', id);
 }
 
-extension TagByIndex on IsarCollection<Tag> {
-  Future<Tag?> getByName(String name) {
-    return getByIndex(r'name', [name]);
-  }
-
-  Tag? getByNameSync(String name) {
-    return getByIndexSync(r'name', [name]);
-  }
-
-  Future<bool> deleteByName(String name) {
-    return deleteByIndex(r'name', [name]);
-  }
-
-  bool deleteByNameSync(String name) {
-    return deleteByIndexSync(r'name', [name]);
-  }
-
-  Future<List<Tag?>> getAllByName(List<String> nameValues) {
-    final values = nameValues.map((e) => [e]).toList();
-    return getAllByIndex(r'name', values);
-  }
-
-  List<Tag?> getAllByNameSync(List<String> nameValues) {
-    final values = nameValues.map((e) => [e]).toList();
-    return getAllByIndexSync(r'name', values);
-  }
-
-  Future<int> deleteAllByName(List<String> nameValues) {
-    final values = nameValues.map((e) => [e]).toList();
-    return deleteAllByIndex(r'name', values);
-  }
-
-  int deleteAllByNameSync(List<String> nameValues) {
-    final values = nameValues.map((e) => [e]).toList();
-    return deleteAllByIndexSync(r'name', values);
-  }
-
-  Future<Id> putByName(Tag object) {
-    return putByIndex(r'name', object);
-  }
-
-  Id putByNameSync(Tag object, {bool saveLinks = true}) {
-    return putByIndexSync(r'name', object, saveLinks: saveLinks);
-  }
-
-  Future<List<Id>> putAllByName(List<Tag> objects) {
-    return putAllByIndex(r'name', objects);
-  }
-
-  List<Id> putAllByNameSync(List<Tag> objects, {bool saveLinks = true}) {
-    return putAllByIndexSync(r'name', objects, saveLinks: saveLinks);
-  }
-}
-
 extension TagQueryWhereSort on QueryBuilder<Tag, Tag, QWhere> {
   QueryBuilder<Tag, Tag, QAfterWhere> anyId() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(const IdWhereClause.any());
+    });
+  }
+
+  QueryBuilder<Tag, Tag, QAfterWhere> anyCreatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        const IndexWhereClause.any(indexName: r'createdAt'),
+      );
     });
   }
 }
@@ -245,51 +214,187 @@ extension TagQueryWhere on QueryBuilder<Tag, Tag, QWhereClause> {
     });
   }
 
-  QueryBuilder<Tag, Tag, QAfterWhereClause> nameEqualTo(String name) {
+  QueryBuilder<Tag, Tag, QAfterWhereClause> createdAtIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'name',
-        value: [name],
+        indexName: r'createdAt',
+        value: [null],
       ));
     });
   }
 
-  QueryBuilder<Tag, Tag, QAfterWhereClause> nameNotEqualTo(String name) {
+  QueryBuilder<Tag, Tag, QAfterWhereClause> createdAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'createdAt',
+        lower: [null],
+        includeLower: false,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<Tag, Tag, QAfterWhereClause> createdAtEqualTo(
+      DateTime? createdAt) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'createdAt',
+        value: [createdAt],
+      ));
+    });
+  }
+
+  QueryBuilder<Tag, Tag, QAfterWhereClause> createdAtNotEqualTo(
+      DateTime? createdAt) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'name',
+              indexName: r'createdAt',
               lower: [],
-              upper: [name],
+              upper: [createdAt],
               includeUpper: false,
             ))
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'name',
-              lower: [name],
+              indexName: r'createdAt',
+              lower: [createdAt],
               includeLower: false,
               upper: [],
             ));
       } else {
         return query
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'name',
-              lower: [name],
+              indexName: r'createdAt',
+              lower: [createdAt],
               includeLower: false,
               upper: [],
             ))
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'name',
+              indexName: r'createdAt',
               lower: [],
-              upper: [name],
+              upper: [createdAt],
               includeUpper: false,
             ));
       }
     });
   }
+
+  QueryBuilder<Tag, Tag, QAfterWhereClause> createdAtGreaterThan(
+    DateTime? createdAt, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'createdAt',
+        lower: [createdAt],
+        includeLower: include,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<Tag, Tag, QAfterWhereClause> createdAtLessThan(
+    DateTime? createdAt, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'createdAt',
+        lower: [],
+        upper: [createdAt],
+        includeUpper: include,
+      ));
+    });
+  }
+
+  QueryBuilder<Tag, Tag, QAfterWhereClause> createdAtBetween(
+    DateTime? lowerCreatedAt,
+    DateTime? upperCreatedAt, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'createdAt',
+        lower: [lowerCreatedAt],
+        includeLower: includeLower,
+        upper: [upperCreatedAt],
+        includeUpper: includeUpper,
+      ));
+    });
+  }
 }
 
 extension TagQueryFilter on QueryBuilder<Tag, Tag, QFilterCondition> {
+  QueryBuilder<Tag, Tag, QAfterFilterCondition> createdAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'createdAt',
+      ));
+    });
+  }
+
+  QueryBuilder<Tag, Tag, QAfterFilterCondition> createdAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'createdAt',
+      ));
+    });
+  }
+
+  QueryBuilder<Tag, Tag, QAfterFilterCondition> createdAtEqualTo(
+      DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'createdAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Tag, Tag, QAfterFilterCondition> createdAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'createdAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Tag, Tag, QAfterFilterCondition> createdAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'createdAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Tag, Tag, QAfterFilterCondition> createdAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'createdAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
   QueryBuilder<Tag, Tag, QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -342,8 +447,24 @@ extension TagQueryFilter on QueryBuilder<Tag, Tag, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Tag, Tag, QAfterFilterCondition> nameIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'name',
+      ));
+    });
+  }
+
+  QueryBuilder<Tag, Tag, QAfterFilterCondition> nameIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'name',
+      ));
+    });
+  }
+
   QueryBuilder<Tag, Tag, QAfterFilterCondition> nameEqualTo(
-    String value, {
+    String? value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
@@ -356,7 +477,7 @@ extension TagQueryFilter on QueryBuilder<Tag, Tag, QFilterCondition> {
   }
 
   QueryBuilder<Tag, Tag, QAfterFilterCondition> nameGreaterThan(
-    String value, {
+    String? value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
@@ -371,7 +492,7 @@ extension TagQueryFilter on QueryBuilder<Tag, Tag, QFilterCondition> {
   }
 
   QueryBuilder<Tag, Tag, QAfterFilterCondition> nameLessThan(
-    String value, {
+    String? value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
@@ -386,8 +507,8 @@ extension TagQueryFilter on QueryBuilder<Tag, Tag, QFilterCondition> {
   }
 
   QueryBuilder<Tag, Tag, QAfterFilterCondition> nameBetween(
-    String lower,
-    String upper, {
+    String? lower,
+    String? upper, {
     bool includeLower = true,
     bool includeUpper = true,
     bool caseSensitive = true,
@@ -530,6 +651,18 @@ extension TagQueryLinks on QueryBuilder<Tag, Tag, QFilterCondition> {
 }
 
 extension TagQuerySortBy on QueryBuilder<Tag, Tag, QSortBy> {
+  QueryBuilder<Tag, Tag, QAfterSortBy> sortByCreatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'createdAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Tag, Tag, QAfterSortBy> sortByCreatedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'createdAt', Sort.desc);
+    });
+  }
+
   QueryBuilder<Tag, Tag, QAfterSortBy> sortByName() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'name', Sort.asc);
@@ -544,6 +677,18 @@ extension TagQuerySortBy on QueryBuilder<Tag, Tag, QSortBy> {
 }
 
 extension TagQuerySortThenBy on QueryBuilder<Tag, Tag, QSortThenBy> {
+  QueryBuilder<Tag, Tag, QAfterSortBy> thenByCreatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'createdAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Tag, Tag, QAfterSortBy> thenByCreatedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'createdAt', Sort.desc);
+    });
+  }
+
   QueryBuilder<Tag, Tag, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -570,6 +715,12 @@ extension TagQuerySortThenBy on QueryBuilder<Tag, Tag, QSortThenBy> {
 }
 
 extension TagQueryWhereDistinct on QueryBuilder<Tag, Tag, QDistinct> {
+  QueryBuilder<Tag, Tag, QDistinct> distinctByCreatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'createdAt');
+    });
+  }
+
   QueryBuilder<Tag, Tag, QDistinct> distinctByName(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -585,7 +736,13 @@ extension TagQueryProperty on QueryBuilder<Tag, Tag, QQueryProperty> {
     });
   }
 
-  QueryBuilder<Tag, String, QQueryOperations> nameProperty() {
+  QueryBuilder<Tag, DateTime?, QQueryOperations> createdAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'createdAt');
+    });
+  }
+
+  QueryBuilder<Tag, String?, QQueryOperations> nameProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'name');
     });

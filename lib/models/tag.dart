@@ -7,9 +7,18 @@ part 'tag.g.dart';
 class Tag {
   Id id = Isar.autoIncrement;
 
-  @Index(unique: true)
-  late String name;
+  String? name;
+
+  @Index()
+  DateTime? createdAt;
 
   @Backlink(to: 'tags')
   final notes = IsarLinks<Note>();
+
+  Tag({
+    this.name,
+    DateTime? createdAt,
+  }) {
+    this.createdAt = createdAt ?? DateTime.now();
+  }
 }

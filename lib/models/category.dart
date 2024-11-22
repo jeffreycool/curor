@@ -7,9 +7,18 @@ part 'category.g.dart';
 class Category {
   Id id = Isar.autoIncrement;
 
-  @Index(type: IndexType.value)
-  late String name;
+  String? name;
+
+  @Index()
+  DateTime? createdAt;
 
   @Backlink(to: 'category')
   final notes = IsarLinks<Note>();
+
+  Category({
+    this.name,
+    DateTime? createdAt,
+  }) {
+    this.createdAt = createdAt ?? DateTime.now();
+  }
 }

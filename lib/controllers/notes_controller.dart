@@ -22,50 +22,95 @@ class NotesController extends BaseController {
   // 是否置顶
   final isPinned = false.obs;
 
+  // 分页相关变量
+  static const int _pageSize = 20;
+  final _currentPage = 0.obs;
+  final hasMoreData = true.obs;
+  final isLoadingMore = false.obs;
+
   @override
   void onInit() {
     super.onInit();
-    _loadNotes(); // 初始化时加载笔记
+    ever(searchQuery, (_) => refreshNotes());
+    ever(isPinned, (_) => refreshNotes());
+    _loadInitialNotes();
   }
 
-  /// 加载所有笔记
-  void _loadNotes() {
-    startLoading();
+  /// 加载初始笔记
+  Future<void> _loadInitialNotes() async {
+    _currentPage.value = 0;
+    notes.clear();
+    hasMoreData.value = true;
+    await _loadMoreNotes();
+  }
+
+  /// 加载更多笔记
+  Future<void> loadMoreNotes() async {
+    if (!hasMoreData.value || isLoadingMore.value) return;
+    await _loadMoreNotes();
+  }
+
+  /// 内部加载笔记方法
+  Future<void> _loadMoreNotes() async {
+    isLoadingMore.value = true;
     try {
-      noteService.getAllNotes().listen(
-        (notesList) {
-          notes.value = notesList;
-          stopLoading();
-        },
-        onError: handleError,
+      final newNotes = await noteService.getNotesByPage(
+        page: _currentPage.value,
+        pageSize: _pageSize,
+        searchQuery: searchQuery.value,
+        isPinned: isPinned.value,
       );
+
+      if (newNotes.isEmpty) {
+        hasMoreData.value = false;
+      } else {
+        notes.addAll(newNotes);
+        _currentPage.value++;
+      }
     } catch (e) {
       handleError(e);
+    } finally {
+      isLoadingMore.value = false;
     }
+  }
+
+  /// 刷新笔记列表
+  Future<void> refreshNotes() async {
+    await _loadInitialNotes();
+  }
+
+  /// 搜索笔记
+  void searchNotes(String query) {
+    searchQuery.value = query;
   }
 
   /// 添加新笔记
   Future<void> addNote(String title, String content) async {
-    startLoading();
+    if (title.isEmpty) return;
+
     try {
       final note = Note()
         ..title = title
         ..content = content
         ..createdAt = DateTime.now()
-        ..isPinned = isPinned.value;
-
-      // 设置分类
-      if (selectedCategory.value != null) {
-        note.category.value = selectedCategory.value;
-      }
-
-      // 设置标签
-      note.tags.addAll(selectedTags);
+        ..isPinned = false;
 
       await noteService.saveNote(note);
-      stopLoading();
-      Get.back();
-      Get.snackbar('success'.tr, 'note_added'.tr);
+      await refreshNotes();
+    } catch (e) {
+      handleError(e);
+    }
+  }
+
+  /// 更新笔记
+  Future<void> updateNote(Note note, String title, String content) async {
+    if (title.isEmpty) return;
+
+    try {
+      note.title = title;
+      note.content = content;
+      await noteService.saveNote(note);
+      await refreshNotes();
     } catch (e) {
       handleError(e);
     }
@@ -74,9 +119,19 @@ class NotesController extends BaseController {
   /// 删除笔记
   Future<void> deleteNote(Note note) async {
     try {
-      await noteService.isar.writeTxn(() async {
-        await noteService.isar.notes.delete(note.id);
-      });
+      await noteService.deleteNote(note);
+      await refreshNotes();
+    } catch (e) {
+      handleError(e);
+    }
+  }
+
+  /// 切换笔记置顶状态
+  Future<void> togglePin(Note note) async {
+    try {
+      note.isPinned = !note.isPinned;
+      await noteService.saveNote(note);
+      await refreshNotes();
     } catch (e) {
       handleError(e);
     }
